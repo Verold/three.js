@@ -4700,6 +4700,9 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 		}
 
+		if ( material.envMap !== uniforms.envMap.value ) {
+			material.needsUpdate = true;
+		}
 		uniforms.envMap.value = material.envMap;
 		uniforms.flipEnvMap.value = ( material.envMap instanceof THREE.WebGLRenderTargetCube ) ? 1 : - 1;
 
@@ -4716,7 +4719,10 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 		uniforms.refractionRatio.value = material.refractionRatio;
 		uniforms.combine.value = material.combine;
-		uniforms.useRefract.value = material.envMap && material.envMap.mapping instanceof THREE.CubeRefractionMapping;
+		uniforms.useRefract.value = material.envMap && (
+			material.envMap.mapping === THREE.CubeRefractionMapping ||
+			material.envMap.mapping === THREE.SphericalRefractionMapping ||
+			material.envMap.mapping === THREE.EquirectangularRefractionMapping );
 
 	}
 
