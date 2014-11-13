@@ -4700,9 +4700,6 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 		}
 
-		if ( material.envMap !== uniforms.envMap.value ) {
-			material.needsUpdate = true;
-		}
 		uniforms.envMap.value = material.envMap;
 		uniforms.flipEnvMap.value = ( material.envMap instanceof THREE.WebGLRenderTargetCube ) ? 1 : - 1;
 
