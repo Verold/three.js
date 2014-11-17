@@ -121,10 +121,9 @@ THREE.CubeReflectionMapping = 301;
 THREE.CubeRefractionMapping = 302;
 
 THREE.SphericalReflectionMapping = 303;
-THREE.SphericalRefractionMapping = 304;
 
-THREE.EquirectangularReflectionMapping = 305;
-THREE.EquirectangularRefractionMapping = 306;
+THREE.EquirectangularReflectionMapping = 304;
+THREE.EquirectangularRefractionMapping = 305;
 
 // Wrapping modes
 
