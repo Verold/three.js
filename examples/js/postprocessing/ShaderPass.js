@@ -13,7 +13,9 @@ THREE.ShaderPass = function ( shader, textureID ) {
         	defines: shader.defines || {},
 		uniforms: this.uniforms,
 		vertexShader: shader.vertexShader,
-		fragmentShader: shader.fragmentShader
+		fragmentShader: shader.fragmentShader,
+		depthWrite: false,
+		blending: THREE.NoBlending,
 
 	} );
 

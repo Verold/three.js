@@ -16,18 +16,18 @@
 			}
 			h1 { }
 			a { color:skyblue; text-decoration:none }
-			canvas { pointer-events:none; z-index:10; position:relative; }
+			canvas { pointer-events:none; z-index:0; position:relative; }
 
 			#d { position:absolute; width: 100%; text-align:center; margin:1em 0 -4.5em 0; z-index:1000; }
 
-			.bwrap { margin:0.5em 0 0 0 }
-			button { font-family:georgia; border:0; background:#000; color:#fff; padding:0.2em 0.5em; cursor:pointer; border-radius:3px; }
-			button:hover { background:#333 }
-			#buttons_cars button { color:#fa0 }
+			.bwrap { margin:0.5em 0 0 0; display: none;}
+			button { font-family:georgia; border:0; background:#000; color:#fff; padding:0.2em 0.5em; cursor:pointer; border-radius:3px; display: none; }
+			button:hover { background:#333; display: none; }
+			#buttons_cars button { color:#fa0; display: none; }
 
-			#car_info { text-align:center; }
-			#car_name { font-size:1em }
-			#car_author { font-size:1em }
+			#car_info { text-align:center; display: none; }
+			#car_name { font-size:1em; display: none; }
+			#car_author { font-size:1em; display: none; }
 
 			#oldie { background:rgb(50,0,0) !important; color:#fff !important; margin-top:7em!important }
 		</style>
@@ -55,12 +55,26 @@
 			<div id="buttons_materials" class="bwrap"></div>
 		</div>
 
-		<script src="../build/three.min.js"></script>
+		<script src="../build/three.js"></script>
 
 		<script src="js/loaders/BinaryLoader.js"></script>
 
 		<script src="js/Detector.js"></script>
 		<script src="js/libs/stats.min.js"></script>
+		<script src="js/libs/dat.gui.min.js"></script>
+
+		<script src="js/shaders/CopyShader.js"></script>
+		<script src="js/shaders/LuminosityShader.js"></script>
+		<script src="js/shaders/ConvolutionShader.js"></script>
+		<!-- <script src="js/shaders/HDRDecodeShader.js"></script>
+		<script src="js/shaders/ToneMapShader.js"></script> -->
+
+		<script src="js/postprocessing/EffectComposer.js"></script>
+		<script src="js/postprocessing/RenderPass.js"></script>
+		<script src="js/postprocessing/MaskPass.js"></script>
+		<script src="js/postprocessing/ShaderPass.js"></script>
+		<script src="js/postprocessing/BloomPass.js"></script>
+		<script src="js/postprocessing/AdaptiveLuminancePass.js"></script>
 
 		<script>
 
@@ -139,9 +153,14 @@
 
 			var container, stats;
 
-			var camera, scene, renderer;
-			var cameraCube, sceneCube;
+			var bloomPass, toneMapPass, luminancePass;
+			var params;
 
+			var camera, scene, renderer, effectComposer;
+			var cameraCube, sceneCube;
+			var cameraBG, sceneBG;
+			var adaptiveLuminanceMat, currentLuminanceRT, previousLuminanceMat;
+			
 			var m, mi;
 
 			var directionalLight, pointLight;
@@ -154,44 +173,135 @@
 			var loader = new THREE.BinaryLoader( true );
 			document.body.appendChild( loader.statusDomElement );
 
-			var renderOptions = { renderOpaque: true, renderTransparent: false }
-
 			init();
 			animate();
 
 			function init() {
+
+				params = {
+					// projection: 'normal',
+					middleGrey: 0.6,
+					maxLuminance: 16,
+					avgLuminance: 1,
+					bloomAmount: 2.0,
+					sceneLight: 2.0,
+					// clear: function() {
+					// 	removeDecals();
+					// }
+				};
 
 				container = document.createElement( 'div' );
 				document.body.appendChild( container );
 
 				// CAMERAS
 
-				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 100000 );
+				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.1, 100000 );
+				camera.position.x = 700;
+				camera.position.y = 400;
+				camera.position.z = 700;
 				cameraCube = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 100000 );
+
+				cameraBG = new THREE.OrthographicCamera( -windowHalfX, windowHalfX, windowHalfY, -windowHalfY, -10000, 10000 );
+				cameraBG.position.z = 100;
 
 				// SCENE
 
 				scene = new THREE.Scene();
 				sceneCube = new THREE.Scene();
+				sceneBG = new THREE.Scene();
 
 				// LIGHTS
 
-				var ambient = new THREE.AmbientLight( 0x050505 );
+				var ambient = new THREE.AmbientLight( 0 );
 				scene.add( ambient );
 
-				directionalLight = new THREE.DirectionalLight( 0xffffff, 2 );
+				directionalLight = new THREE.DirectionalLight( 0xffffff, params.sceneLight );
 				directionalLight.position.set( 2, 1.2, 10 ).normalize();
 				scene.add( directionalLight );
 
-				directionalLight = new THREE.DirectionalLight( 0xffffff, 1 );
-				directionalLight.position.set( -2, 1.2, -10 ).normalize();
-				scene.add( directionalLight );
+				// directionalLight = new THREE.DirectionalLight( 0xffffff, 1 );
+				// directionalLight.position.set( -2, 1.2, -10 ).normalize();
+				// scene.add( directionalLight );
 
-				pointLight = new THREE.PointLight( 0xffaa00, 2 );
-				pointLight.position.set( 2000, 1200, 10000 );
-				scene.add( pointLight );
+				// pointLight = new THREE.PointLight( 0xffaa00, 2 );
+				// pointLight.position.set( 2000, 1200, 10000 );
+				// scene.add( pointLight );
+				// 
+				var cubeMesh = new THREE.Mesh( new THREE.BoxGeometry( 1000, 1000, 1000 ), new THREE.MeshPhongMaterial() );
+				scene.add( cubeMesh );
+
+				var vBGShader = [
+					// "attribute vec2 uv;",
+					"varying vec2 vUv;",
+			   	"void main() {",
+			   		"vUv = uv;",
+		      	"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+		    	"}"
+
+			  ].join("\n");
+
+			  var pBGShader = [
+
+			    "uniform sampler2D map;",
+			    "varying vec2 vUv;",
+			    THREE.ShaderChunk[ 'hdr_decode_pars_fragment'],
+			    
+			    "void main() {",
+			      
+		        "vec2 sampleUV = vUv;",
+		        "float colour = texture2D( map, sampleUV, 8.0 ).r;",
+		        
+			      "gl_FragColor = vec4( vec3( colour ), 1.0 );",
+
+			    "}"
+
+			  ].join("\n");
 
 				// Skybox
+				adaptiveLuminanceMat = new THREE.ShaderMaterial( {
+					uniforms: {
+						map: { type: 't', value: null }
+					},
+					vertexShader: vBGShader,
+					fragmentShader: pBGShader,
+					depthTest: true,
+					// color: 0xffffff
+					hdrOutput: false,
+					// blending: THREE.NoBlending
+				} );
+
+				currentLuminanceMat = new THREE.ShaderMaterial( {
+					uniforms: {
+						map: { type: 't', value: null }
+					},
+					vertexShader: vBGShader,
+					fragmentShader: pBGShader,
+					depthTest: true,
+					// color: 0xffffff
+					hdrOutput: false,
+					// blending: THREE.NoBlending
+				} );
+
+				var hdrUrl = 'textures/hdr/rgbmTest.png';
+
+				// var textureHdr = THREE.ImageUtils.loadTexture( hdrUrl, undefined, function( tex ) {
+				// 	tex.format = THREE.RGBAFormat;
+				// 	adaptiveLuminanceMat.uniforms.map.value = tex;
+				// 	adaptiveLuminanceMat.needsUpdate = true;
+				// 	// console.dir( tex );
+				// } );
+				
+				var quadBG = new THREE.Mesh( new THREE.PlaneBufferGeometry( 0.1, 0.1 ), currentLuminanceMat );
+				quadBG.position.z = -500;
+				quadBG.position.x = -window.innerWidth * 0.5 + window.innerWidth * 0.05;;
+				quadBG.scale.set( window.innerWidth, window.innerHeight, 1 );
+				sceneBG.add( quadBG );
+
+				quadBG = new THREE.Mesh( new THREE.PlaneBufferGeometry( 0.1, 0.1 ), adaptiveLuminanceMat );
+				quadBG.position.z = -500;
+				quadBG.position.x = -window.innerWidth * 0.5 + window.innerWidth * 0.15;
+				quadBG.scale.set( window.innerWidth, window.innerHeight, 1 );
+				sceneBG.add( quadBG );
 
 				var shader = THREE.ShaderLib[ "cube" ];
 				shader.uniforms[ "tCube" ].value = textureCube;
@@ -215,8 +325,53 @@
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.setFaceCulling( THREE.CullFaceNone );
 				renderer.autoClear = false;
+				renderer.toneMappingEnabled = true;
+				// renderer.hdrEnabled = true;
+				// renderer.hdrType = THREE.RGBMHDR;
+				renderer.gammaInput = false;
+				renderer.gammaOutput = false;
 
 				container.appendChild( renderer.domElement );
+
+				var width = window.innerWidth || 1;
+				var height = window.innerHeight || 1;
+				var parameters = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, stencilBuffer: false };
+
+				var renderTarget = new THREE.WebGLRenderTarget( width, height, parameters );
+				effectComposer = new THREE.EffectComposer( renderer, renderTarget );
+  			effectComposer.setSize( window.innerWidth, window.innerHeight );
+				var bgPass = new THREE.RenderPass( sceneBG, cameraBG );
+				bgPass.clear = false;
+				var scenePass = new THREE.RenderPass( scene, camera, undefined, undefined, undefined, true, false );
+				var sceneTransparentPass = new THREE.RenderPass( scene, camera, undefined, undefined, undefined, false, true );
+				sceneTransparentPass.clear = false;
+				var skyboxPass = new THREE.RenderPass( sceneCube, cameraCube );
+  			scenePass.clear = false;
+
+  			luminancePass = new THREE.AdaptiveLuminancePass( 256 );
+  			
+  			effectComposer.addPass( skyboxPass );
+  			effectComposer.addPass( bgPass );
+  			effectComposer.addPass( scenePass );
+
+  			// toneMapPass = new THREE.ShaderPass( THREE.ToneMapShader );
+  			// toneMapPass.needsSwap = true;
+  			// toneMapPass.clear = false;
+  			// effectComposer.addPass( toneMapPass );
+
+  			// // sceneTransparentPass.needsSwap = true;
+  			effectComposer.addPass( sceneTransparentPass );
+
+  			effectComposer.addPass( luminancePass );
+
+  			bloomPass = new THREE.BloomPass();
+  			// bloomPass.clear = true;
+  			effectComposer.addPass( bloomPass );
+  			
+
+  			var copyPass = new THREE.ShaderPass( THREE.CopyShader );
+  			copyPass.renderToScreen = true;
+  			effectComposer.addPass( copyPass );
 
 				if ( STATS_ENABLED ) {
 
@@ -464,11 +619,20 @@
 
 				}
 
-				loader.load( CARS[ "veyron" ].url, function( geometry ) { createScene( geometry, "veyron" ) } );
+				loader.load( CARS[ "f50" ].url, function( geometry ) { createScene( geometry, "f50" ) } );
 
 				for( var c in CARS ) initCarButton( c );
 
-				//
+				var gui = new dat.GUI();
+
+				// gui.add( params, 'projection', { 'From cam to mesh': 'camera', 'Normal to mesh': 'normal' } );
+				gui.add( params, 'middleGrey', 0, 6 );
+				gui.add( params, 'maxLuminance', 1, 30 );
+				gui.add( params, 'avgLuminance', 0.001, 6.0 );
+				gui.add( params, 'sceneLight', 0.1, 6.0 );
+				gui.add( params, 'bloomAmount' );
+				// gui.add( params, 'clear' );
+				gui.open();
 
 				window.addEventListener( 'resize', onWindowResize, false );
 
@@ -594,7 +758,7 @@
 
 				mesh.scale.x = mesh.scale.y = mesh.scale.z = s;
 
-				scene.add( mesh );
+				// scene.add( mesh );
 
 				CARS[ car ].object = mesh;
 
@@ -611,6 +775,7 @@
 			function onDocumentMouseMove(event) {
 
 				mouseY = ( event.clientY - window.innerHeight );
+				mouseX = event.clientX;
 
 			}
 
@@ -619,6 +784,20 @@
 			function animate() {
 
 				requestAnimationFrame( animate );
+				if ( bloomPass ) {
+					// bloomPass.setStrength( params.bloomAmount );
+					bloomPass.copyUniforms[ "opacity" ].value = params.bloomAmount;
+				}
+				// if ( toneMapPass ) {
+				// 	toneMapPass.uniforms.averageLuminance.value = params.avgLuminance;
+				// }
+				renderer.toneMapping_AvgLum = params.avgLuminance;
+				renderer.toneMappingLuminanceMap = luminancePass.luminanceRT;
+				adaptiveLuminanceMat.uniforms.map.value = luminancePass.luminanceRT;
+				currentLuminanceMat.uniforms.map.value = luminancePass.currentLuminanceRT;
+				renderer.toneMappingMaxLuminance = params.maxLuminance;
+				renderer.toneMappingMiddleGrey = params.middleGrey;
+				directionalLight.intensity = params.sceneLight;
 
 				render();
 
@@ -628,20 +807,16 @@
 
 				var timer = -0.0002 * Date.now();
 
-				camera.position.x = 1000 * Math.cos( timer );
+				camera.position.x = 1000 * Math.cos( 0.01 * mouseX );
 				camera.position.y += ( - mouseY - camera.position.y ) * .05;
-				camera.position.z = 1000 * Math.sin( timer );
+				camera.position.z = 1000 * Math.sin( 0.01 * mouseX );
 
 				camera.lookAt( scene.position );
 				cameraCube.rotation.copy( camera.rotation );
 
-				renderer.render( sceneCube, cameraCube );
-				renderOptions.renderOpaque = true;
-				renderOptions.renderTransparent = false;
-				renderer.render( scene, camera, undefined, undefined, renderOptions );
-				renderOptions.renderOpaque = false;
-				renderOptions.renderTransparent = true;
-				renderer.render( scene, camera, undefined, undefined, renderOptions );
+				effectComposer.render( 0.017 )
+				
+				// renderer.render( scene, camera );
 
 				if ( STATS_ENABLED ) stats.update();
 

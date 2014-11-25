@@ -328,12 +328,10 @@
 				mesh = new THREE.Mesh( new THREE.BoxGeometry( 100, 100, 100 ), skyboxMaterial );
 				sceneCube.add( mesh );
 
-				
 				renderer = new THREE.WebGLRenderer();
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.setFaceCulling( THREE.CullFaceNone );
 				renderer.autoClear = false;
-				
 				renderer.gammaInput = true;
 				renderer.gammaOutput = false;
 
