@@ -137,7 +137,7 @@
 
 				var loader = new THREE.RGBELoader();
 
-				var texture = loader.load( "textures/hdr/18o5.tif", function( texture, textureData ){
+				var texture = loader.load( "textures/miranda_uncropped.hdr", function( texture, textureData ){
 					console.log( textureData.header ); // header string
 					console.log( [textureData.width, textureData.height] ); // dimensions
 					materialHDR = new THREE.ShaderMaterial( {

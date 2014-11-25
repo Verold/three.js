@@ -3326,7 +3326,7 @@ THREE.WebGLRenderer = function ( parameters ) {
 			renderObjects( opaqueObjects, camera, lights, fog, true, material );
 			renderObjects( transparentObjects, camera, lights, fog, true, material );
 			renderObjectsImmediate( _webglObjectsImmediate, '', camera, lights, fog, false, material );
-			
+
 		} else {
 
 			var material = null;
