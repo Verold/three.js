@@ -39,8 +39,7 @@ THREE.LuminosityShader = {
 		"void main() {",
 
 			"vec4 texel = texture2D( tDiffuse, vUv );",
-			// "texel = texel * texel;",
-
+			
 			"#if defined( HDR_INPUT ) && defined( HDR_INPUT_TYPE )",
 				"#if ( HDR_INPUT_TYPE == HDR_TYPE_LOGLUV )",
 					"texel.xyz = HDRDecodeLOGLUV( texel );",
@@ -57,7 +56,7 @@ THREE.LuminosityShader = {
 
 			"float v = dot( texel.xyz, luma );",
 
-			"gl_FragColor = vec4( vec3( v ), texel.w );",
+			"gl_FragColor = vec4( v, v, v, texel.w );",
 
 			THREE.ShaderChunk[ "hdr_encode_fragment" ],
 

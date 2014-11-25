@@ -227,24 +227,6 @@ THREE.AdaptiveToneMappingPass.prototype = {
 
 	render: function ( renderer, writeBuffer, readBuffer, delta, maskActive ) {
 
-		function HDREncodeRGBM( color ) {
-		  var rgbm = new THREE.Vector4();
-		  color.multiplyScalar( 1.0 / 6.0 );
-		  rgbm.w = Math.min( Math.max( Math.max( color.x, color.y ), Math.max( color.z, 1e-6 ) ), 1.0 );
-		  // console.log( rgbm.w );
-		  rgbm.w = Math.ceil( rgbm.w * 255.0 ) / 255.0;
-		  rgbm.set( Math.min( color.x / rgbm.w, 1.0), Math.min( color.y / rgbm.w, 1.0), Math.min( color.z / rgbm.w, 1.0), rgbm.w );
-		  console.log( rgbm );
-		  return rgbm;
-		}
-
-		function HDRDecodeRGBM( color ) {
-		  color.multiplyScalar( color.w * 6.0 );
-		  color.w = 1.0;
-		  // console.log( color );
-		  return color;
-		}
-
 		if ( this.needsUpdate ) {
 			this.resetRenderTargets( renderer, readBuffer );
 			

@@ -3229,7 +3229,7 @@ THREE.WebGLRenderer = function ( parameters ) {
 		}
 
 		var fog = scene.fog;
-		
+
 		// reset caching for this frame
 
 		_currentGeometryGroupHash = - 1;
@@ -3275,7 +3275,7 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 			opaqueObjects.sort( painterSortStable );
 			transparentObjects.sort( reversePainterSortStable );
-			
+
 		}
 
 		// custom render plugins (pre pass)
@@ -3323,12 +3323,10 @@ THREE.WebGLRenderer = function ( parameters ) {
 			this.setDepthWrite( material.depthWrite );
 			setPolygonOffset( material.polygonOffset, material.polygonOffsetFactor, material.polygonOffsetUnits );
 
-			// if ( !material.transparent && renderOpaque || material.transparent && renderTransparent ) {
 			renderObjects( opaqueObjects, camera, lights, fog, true, material );
 			renderObjects( transparentObjects, camera, lights, fog, true, material );
 			renderObjectsImmediate( _webglObjectsImmediate, '', camera, lights, fog, false, material );
-			// }
-
+			
 		} else {
 
 			var material = null;
@@ -3339,11 +3337,12 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 			renderObjects( opaqueObjects, camera, lights, fog, false, material );
 			renderObjectsImmediate( _webglObjectsImmediate, 'opaque', camera, lights, fog, false, material );
-			
+
 			// transparent pass (back-to-front order)
+
 			renderObjects( transparentObjects, camera, lights, fog, true, material );
 			renderObjectsImmediate( _webglObjectsImmediate, 'transparent', camera, lights, fog, true, material );
-			
+
 		}
 
 		// custom render plugins (post pass)
@@ -4450,10 +4449,6 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 			}
 
-			if ( _this.toneMappingEnabled ) {
-				refreshUniformsToneMapping( m_uniforms );
-			}
-
 			if ( material instanceof THREE.MeshPhongMaterial ||
 				 material instanceof THREE.MeshLambertMaterial ||
 				 material.lights ) {
@@ -4695,15 +4690,6 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 		}
 
-	}
-
-	function refreshUniformsToneMapping ( uniforms ) {
-		if ( uniforms.avgLuminance ) {
-			uniforms.avgLuminance.value = _this.toneMapping_AvgLum;
-			uniforms.maxLuminance.value = _this.toneMappingMaxLuminance;
-			uniforms.middleGrey.value = _this.toneMappingMiddleGrey;
-			uniforms.luminanceMap.value = _this.toneMappingLuminanceMap;
-		}
 	}
 
 	function refreshUniformsPhong ( uniforms, material ) {
